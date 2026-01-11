@@ -23,29 +23,46 @@ jobs:
           VERSION=$(cat VERSION.txt)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           
+      #- name: Set Docker image tag based on repository
+      #  id: set-tag
+      #  run: |
+      #    if [ "${{ github.repository }}" = "changemoon/LibreTV" ]; then
+      #      echo "IMAGE_NAME=libretv" >> $GITHUB_OUTPUT
+      #      echo "TAGS=${{ vars.DOCKER_USERNAME }}/libretv:latest,${{ vars.DOCKER_USERNAME }}/libretv:${{ steps.version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+      #    else
+      #      echo "IMAGE_NAME=libretv-beta" >> $GITHUB_OUTPUT
+      #      echo "TAGS=${{ vars.DOCKER_USERNAME }}/libretv-beta:latest" >> $GITHUB_OUTPUT
+      #    fi
       - name: Set Docker image tag based on repository
         id: set-tag
         run: |
+          # Convert repo name to lowercase (required by Docker)
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           if [ "${{ github.repository }}" = "changemoon/LibreTV" ]; then
-            echo "IMAGE_NAME=libretv" >> $GITHUB_OUTPUT
-            echo "TAGS=${{ vars.DOCKER_USERNAME }}/libretv:latest,${{ vars.DOCKER_USERNAME }}/libretv:${{ steps.version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+            echo "TAGS=ghcr.io/$REPO_LOWER:latest,ghcr.io/$REPO_LOWER:${{ steps.version.outputs.VERSION }}" >> $GITHUB_OUTPUT
           else
-            echo "IMAGE_NAME=libretv-beta" >> $GITHUB_OUTPUT
-            echo "TAGS=${{ vars.DOCKER_USERNAME }}/libretv-beta:latest" >> $GITHUB_OUTPUT
+            echo "TAGS=ghcr.io/$REPO_LOWER-beta:latest" >> $GITHUB_OUTPUT
           fi
-
+          
       - name: Set up Docker QEMU
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub
+      #- name: Login to DockerHub
+      #  uses: docker/login-action@v3
+      #  with:
+      #    username: ${{ vars.DOCKER_USERNAME }}
+      #    password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Build and push LibreTV image
         uses: docker/build-push-action@v6.14.0
         with:
